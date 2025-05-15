@@ -1,0 +1,233 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, sans-serif;
+    }
+
+    .center-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+
+    h2 {
+        color: #000000;
+        text-align: center;
+        font-size: 60px;
+        margin-bottom: 20px;
+        font-weight: bold;
+    }
+
+    .form-container {
+        display: flex;
+        padding: 40px 60px;
+        gap: 20px;
+        width: 1250px;
+        height: 200px;
+        border: 2px solid #0c1a94;
+        border-radius: 20px;
+        background-color: #0c1a94;
+        align-items: center;
+    }
+
+    select, button {
+        padding: 8px;
+        font-size: 28px;
+    }
+
+    button {
+        cursor: pointer;
+        background-color: #996515;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 28px;
+    }
+
+        button:hover {
+            background-color: #B8860B;
+        }
+</style>
+
+<div class="center-wrapper">
+    <h2>Find Your Part</h2>
+    <div class="form-container">
+        <select id="yearDropdown">
+            <option value="" disabled selected>Select Year</option>
+        </select>
+
+        <select id="makeDropdown" disabled>
+            <option value="" disabled selected>Select Make</option>
+        </select>
+
+        <select id="modelDropdown" disabled>
+            <option value="" disabled selected>Select Model</option>
+        </select>
+
+        <select id="productTypeDropdown" disabled>
+            <option value="" disabled selected>Select Product Type</option>
+        </select>
+
+        <button id="findButton" onclick="handleFindPart()" disabled>Find My Part</button>
+    </div>
+</div>
+
+<script>
+    function handleFindPart() {
+        const year = document.getElementById('yearDropdown').value;
+        const make = document.getElementById('makeDropdown').value;
+        const model = document.getElementById('modelDropdown').value;
+        const productType = document.getElementById('productTypeDropdown').value;
+
+        const match = carData.find(car => car.year === year && car.make === make && car.model === model && car.productType === productType);
+
+        if (match && match.url) {
+            window.location.href = match.url;
+        } else {
+            alert("No URL found for the selected combination.");
+        }
+    }
+
+    let carData = [];
+    fetch('/example_dataset.csv').then(response => response.text()).then(csv => {
+            carData = parseCSV(csv);
+            populateYears(carData);
+        });
+
+    function parseCSV(data) {
+        const lines = data.trim().split('\n');
+        const headers = lines[0].split(',');
+        return lines.slice(1).map(line => {
+            const [year, make, model, productType, url] = line.split(',');
+            return {
+                year: year.trim(),
+                make: make.trim(),
+                model: model.trim(),
+                productType: productType.trim(),
+                url: url.trim()
+            };
+        });
+    }
+
+    function populateYears(data) {
+        const yearDropdown = document.getElementById('yearDropdown');
+        const years = [...new Set(data.map(item => item.year))];
+
+        years.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearDropdown.appendChild(option);
+        });
+
+        yearDropdown.disabled = false;
+
+        document.getElementById('makeDropdown').disabled = true;
+        document.getElementById('modelDropdown').disabled = true;
+        document.getElementById('productTypeDropdown').disabled = true;
+        document.getElementById('findButton').disabled = true;
+
+        yearDropdown.addEventListener('change', () => {
+            const selectedYear = yearDropdown.value;
+            populateMakes(selectedYear);
+        });
+    }
+
+    function populateMakes(selectedYear) {
+        const makeDropdown = document.getElementById('makeDropdown');
+        const modelDropdown = document.getElementById('modelDropdown');
+        const productTypeDropdown = document.getElementById('productTypeDropdown');
+        makeDropdown.innerHTML = '<option disabled selected>Select Make</option>';
+        modelDropdown.innerHTML = '<option disabled selected>Select Model</option>';
+        productTypeDropdown.innerHTML = '<option disabled selected>Select Product Type</option>';
+        modelDropdown.disabled = true;
+        productTypeDropdown.disabled = true;
+
+        const makes = [...new Set(carData.filter(car => car.year === selectedYear).map(car => car.make))];
+
+        makes.forEach(make => {
+            const option = document.createElement('option');
+            option.value = make;
+            option.textContent = make;
+            makeDropdown.appendChild(option);
+        });
+
+        makeDropdown.disabled = false;
+
+        makeDropdown.addEventListener('change', () => {
+            const selectedMake = makeDropdown.value;
+            populateModelsAndProductTypes(selectedYear, selectedMake);
+        });
+    }
+
+    function populateModelsAndProductTypes(selectedYear, selectedMake) {
+        const modelDropdown = document.getElementById('modelDropdown');
+        const productTypeDropdown = document.getElementById('productTypeDropdown');
+
+        modelDropdown.innerHTML = '<option disabled selected>Select Model</option>';
+        productTypeDropdown.innerHTML = '<option disabled selected>Select Product Type</option>';
+
+        const models = [...new Set(carData.filter(car => car.year === selectedYear && car.make === selectedMake).map(car => car.model))];
+
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            modelDropdown.appendChild(option);
+        });
+
+        modelDropdown.disabled = false;
+
+        productTypeDropdown.disabled = true;
+
+        modelDropdown.addEventListener('change', () => {
+            const selectedModel = modelDropdown.value;
+            populateProductTypes(selectedYear, selectedMake, selectedModel);
+        });
+    }
+
+    function populateProductTypes(selectedYear, selectedMake, selectedModel) {
+        const productTypeDropdown = document.getElementById('productTypeDropdown');
+
+        productTypeDropdown.innerHTML = '<option disabled selected>Select Product Type</option>';
+
+        const productTypes = [...new Set(carData.filter(car => car.year === selectedYear && car.make === selectedMake && car.model === selectedModel).map(car => car.productType))];
+
+        productTypes.forEach(productType => {
+            const option = document.createElement('option');
+            option.value = productType;
+            option.textContent = productType;
+            productTypeDropdown.appendChild(option);
+        });
+
+        productTypeDropdown.disabled = false;
+
+        productTypeDropdown.addEventListener('change', () => {updateButtonState();});
+    }
+
+    function updateButtonState() {
+        const year = document.getElementById('yearDropdown').value;
+        const make = document.getElementById('makeDropdown').value;
+        const model = document.getElementById('modelDropdown').value;
+        const productType = document.getElementById('productTypeDropdown').value;
+        const button = document.getElementById('findButton');
+
+        if (year && make && model && productType) {
+            button.disabled = false;
+        } else {
+            button.disabled = true;
+        }
+    }
+</script>
